@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indian Bank Jewel Loan Management</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <section id="loginView" class="view">
+      <div class="login-card">
+        <div class="brand-lockup">
+          <p class="eyebrow">Jewel Loan Management</p>
+          <h1>Indian Bank, Sulankurichi</h1>
+        </div>
+
+        <form id="loginForm" class="stacked-form">
+          <label>
+            <span>Username</span>
+            <input id="username" name="username" type="text" autocomplete="username" placeholder="Enter username" required>
+          </label>
+
+          <label>
+            <span>Password</span>
+            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+          </label>
+
+          <button type="submit" class="primary-button full-width">Sign In</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="dashboardView" class="view hidden">
+      <header class="topbar">
+        <div class="brand-block">
+          <p class="eyebrow">Branch Dashboard</p>
+          <h1>Indian Bank, Sulankurichi</h1>
+          <p id="todayStamp" class="muted-text"></p>
+        </div>
+
+        <div class="top-actions">
+          <button id="newEntryButton" type="button" class="action-button" data-open-modal="entryModal" disabled>New Entry</button>
+          <button type="button" class="action-button secondary" data-open-modal="manualEntryModal">Manual Entry</button>
+          <button type="button" class="action-button secondary" data-open-modal="adjustmentModal">Old Adjustment</button>
+          <button type="button" class="action-button ghost" data-open-modal="shareModal">Share</button>
+        </div>
+      </header>
+
+      <main class="dashboard-grid">
+        <section class="panel hero-panel">
+          <div>
+            <p class="eyebrow">Overall Totals</p>
+            <h2>Current branch balance</h2>
+          </div>
+
+          <div class="total-grid">
+            <article class="metric-card">
+              <span class="metric-label">Pockets</span>
+              <strong id="overallPockets">0</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Weight</span>
+              <strong id="overallWeight">0.000 g</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Amount</span>
+              <strong id="overallAmount">Rs. 0.00</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel" id="categorySetupPanel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">First Setup</p>
+              <h2>Category Initialization</h2>
+            </div>
+            <p id="setupStatus" class="status-pill neutral">Pending</p>
+          </div>
+
+          <form id="categorySetupForm" class="category-setup-form">
+            <div class="setup-grid">
+              <article class="setup-card">
+                <h3>Agri</h3>
+                <label>
+                  <span>Number of pockets</span>
+                  <input type="number" name="Agri_pockets" min="0" step="1" value="0" required>
+                </label>
+                <label>
+                  <span>Total weight</span>
+                  <input type="number" name="Agri_weight" min="0" step="0.001" value="0" required>
+                </label>
+                <label>
+                  <span>Total amount</span>
+                  <input type="number" name="Agri_amount" min="0" step="0.01" value="0" required>
+                </label>
+              </article>
+
+              <article class="setup-card">
+                <h3>Retail</h3>
+                <label>
+                  <span>Number of pockets</span>
+                  <input type="number" name="Retail_pockets" min="0" step="1" value="0" required>
+                </label>
+                <label>
+                  <span>Total weight</span>
+                  <input type="number" name="Retail_weight" min="0" step="0.001" value="0" required>
+                </label>
+                <label>
+                  <span>Total amount</span>
+                  <input type="number" name="Retail_amount" min="0" step="0.01" value="0" required>
+                </label>
+              </article>
+
+              <article class="setup-card">
+                <h3>KCC</h3>
+                <label>
+                  <span>Number of pockets</span>
+                  <input type="number" name="KCC_pockets" min="0" step="1" value="0" required>
+                </label>
+                <label>
+                  <span>Total weight</span>
+                  <input type="number" name="KCC_weight" min="0" step="0.001" value="0" required>
+                </label>
+                <label>
+                  <span>Total amount</span>
+                  <input type="number" name="KCC_amount" min="0" step="0.01" value="0" required>
+                </label>
+              </article>
+
+              <article class="setup-card">
+                <h3>MSME</h3>
+                <label>
+                  <span>Number of pockets</span>
+                  <input type="number" name="MSME_pockets" min="0" step="1" value="0" required>
+                </label>
+                <label>
+                  <span>Total weight</span>
+                  <input type="number" name="MSME_weight" min="0" step="0.001" value="0" required>
+                </label>
+                <label>
+                  <span>Total amount</span>
+                  <input type="number" name="MSME_amount" min="0" step="0.01" value="0" required>
+                </label>
+              </article>
+            </div>
+
+            <div class="form-footer">
+              <p class="muted-text">Initialize once with your branch opening balances. Later transactions will update these totals automatically.</p>
+              <button type="submit" class="primary-button">Save Categories</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel dashboard-detail-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Live Categories</p>
+              <h2>Category Balances</h2>
+            </div>
+          </div>
+          <div id="categoryCards" class="category-card-grid"></div>
+        </section>
+
+        <section class="panel dashboard-detail-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Monthly Counts</p>
+              <h2>Appraiser Activity</h2>
+            </div>
+            <p id="appraiserPeriod" class="muted-text"></p>
+          </div>
+          <div id="appraiserCards" class="appraiser-grid"></div>
+        </section>
+      </main>
+
+      <div class="footer-bar">
+        <button id="openReportButton" type="button" class="action-button">Loan Report</button>
+        <button id="openSummaryReportButton" type="button" class="action-button secondary">Report</button>
+        <button id="logoutButton" type="button" class="action-button ghost">Logout</button>
+      </div>
+    </section>
+
+    <section id="reportView" class="view hidden">
+      <header class="topbar report-topbar">
+        <div class="brand-block">
+          <p class="eyebrow">Loan Register</p>
+          <h1>Loan Report</h1>
+          <p class="muted-text">Excel-style view for all open and closed jewel loans.</p>
+        </div>
+
+        <div class="top-actions">
+          <button id="backToDashboardButton" type="button" class="action-button secondary">Back to Dashboard</button>
+        </div>
+      </header>
+
+      <section class="panel report-panel">
+        <div class="report-toolbar">
+          <input id="reportSearchInput" type="search" placeholder="Search name, card number, category, appraiser">
+          <input id="reportFromDate" type="date" aria-label="Filter from date">
+          <input id="reportToDate" type="date" aria-label="Filter to date">
+          <select id="reportStatusFilter" aria-label="Filter by loan status">
+            <option value="all">All Loans</option>
+            <option value="Open">Active Loans</option>
+            <option value="Closed">Closed Loans</option>
+          </select>
+          <button id="reportPdfButton" type="button" class="action-button secondary">Download PDF</button>
+        </div>
+
+        <div class="report-table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Card Number</th>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Appraiser</th>
+                <th>Weight</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Closure</th>
+              </tr>
+            </thead>
+            <tbody id="loanReportBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section id="summaryReportView" class="view hidden">
+      <header class="topbar report-topbar">
+        <div class="brand-block">
+          <p class="eyebrow">Summary Register</p>
+          <h1>Category Report</h1>
+          <p class="muted-text">Fetch overall totals or a single category for daily, weekly, monthly, and yearly sharing.</p>
+        </div>
+
+        <div class="top-actions">
+          <button id="backFromSummaryButton" type="button" class="action-button secondary">Back to Dashboard</button>
+        </div>
+      </header>
+
+      <section class="panel report-panel">
+        <div class="report-toolbar summary-toolbar">
+          <select id="summaryPeriodFilter" aria-label="Select report period">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input id="summaryAnchorDate" type="date" aria-label="Select report date">
+          <input id="summaryStartDate" class="hidden" type="date" aria-label="Select custom start date">
+          <input id="summaryEndDate" class="hidden" type="date" aria-label="Select custom end date">
+          <select id="summaryCategoryFilter" aria-label="Select category">
+            <option value="all">All Categories</option>
+            <option value="Agri">Agri</option>
+            <option value="Retail">Retail</option>
+            <option value="KCC">KCC</option>
+            <option value="MSME">MSME</option>
+          </select>
+          <button id="summaryPdfButton" type="button" class="action-button secondary">Download PDF</button>
+          <button id="summaryPngButton" type="button" class="action-button ghost">Download PNG</button>
+        </div>
+
+        <div class="summary-report-shell" id="summaryReportCard">
+          <div class="summary-report-header">
+            <div>
+              <h2>Indian Bank</h2>
+              <p>Sulankurichi</p>
+            </div>
+            <div class="summary-report-meta">
+              <strong id="summaryRangeLabel"></strong>
+              <span id="summaryCategoryLabel"></span>
+            </div>
+          </div>
+
+          <div class="report-table-wrap">
+            <table class="report-table summary-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Incoming Pockets</th>
+                  <th>Incoming Weight</th>
+                  <th>Incoming Amount</th>
+                  <th>Outgoing Pockets</th>
+                  <th>Outgoing Weight</th>
+                  <th>Outgoing Amount</th>
+                </tr>
+              </thead>
+              <tbody id="summaryReportBody"></tbody>
+            </table>
+          </div>
+
+          <div class="summary-graph-card">
+            <div class="summary-graph-header">
+              <div>
+                <p class="eyebrow">Trend View</p>
+                <h3 id="summaryTrendTitle">Overall Amount Trend</h3>
+              </div>
+              <div class="summary-legend">
+                <span class="legend-item incoming">Incoming Amount</span>
+                <span class="legend-item outgoing">Outgoing Amount</span>
+              </div>
+            </div>
+            <canvas id="summaryTrendCanvas" height="320"></canvas>
+          </div>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <div id="modalOverlay" class="modal-overlay hidden">
+    <div id="entryModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="entryModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Loan Creation</p>
+          <h2 id="entryModalTitle">New Entry</h2>
+        </div>
+        <button type="button" class="icon-button" data-close-modal>&times;</button>
+      </div>
+
+      <form id="entryForm" class="stacked-form">
+        <label>
+          <span>Name</span>
+          <input name="name" type="text" maxlength="120" required>
+        </label>
+
+        <label>
+          <span>Card Number</span>
+          <input name="cardNumber" type="text" maxlength="40" required>
+        </label>
+
+        <label>
+          <span>Date</span>
+          <input name="date" type="date" required>
+        </label>
+
+        <label>
+          <span>Address</span>
+          <textarea name="address" rows="3" maxlength="250" required></textarea>
+        </label>
+
+        <div class="inline-form-grid">
+          <label>
+            <span>Weight</span>
+            <input name="weight" type="number" min="0.001" step="0.001" required>
+          </label>
+
+          <label>
+            <span>Amount</span>
+            <input name="amount" type="number" min="0.01" step="0.01" required>
+          </label>
+        </div>
+
+        <div class="inline-form-grid">
+          <label>
+            <span>Category</span>
+            <select name="category" required>
+              <option value="Agri">Agri</option>
+              <option value="Retail">Retail</option>
+              <option value="KCC">KCC</option>
+              <option value="MSME">MSME</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Appraiser</span>
+            <select name="appraiser" required>
+              <option value="Selvaraj">Selvaraj</option>
+              <option value="NallaThambi">NallaThambi</option>
+              <option value="Raja">Raja</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form-footer">
+          <p class="muted-text">Saving adds one pocket and updates the selected category totals immediately.</p>
+          <button type="submit" class="primary-button">Save Loan</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="manualEntryModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="manualEntryModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Category Ledger Update</p>
+          <h2 id="manualEntryModalTitle">Manual Entry</h2>
+        </div>
+        <button type="button" class="icon-button" data-close-modal>&times;</button>
+      </div>
+
+      <form id="manualEntryForm" class="stacked-form">
+        <input id="manualEntryMode" name="mode" type="hidden" value="incoming">
+
+        <div class="mode-toggle" role="tablist" aria-label="Manual entry type">
+          <button type="button" class="mode-toggle-button active" data-manual-mode="incoming">Incoming</button>
+          <button type="button" class="mode-toggle-button" data-manual-mode="outgoing">Outgoing</button>
+        </div>
+
+        <label>
+          <span>Date</span>
+          <input name="date" type="date" required>
+        </label>
+
+        <div class="manual-entry-panel" data-manual-panel="incoming">
+          <p class="manual-entry-title">Incoming Entry</p>
+          <div class="setup-grid manual-entry-grid">
+            <article class="setup-card">
+              <h3>Agri</h3>
+              <label>
+                <span>Pockets</span>
+                <input type="number" name="incoming_Agri_pockets" min="0" step="1" value="0" required>
+              </label>
+              <label>
+                <span>Weight</span>
+                <input type="number" name="incoming_Agri_weight" min="0" step="0.001" value="0" required>
+              </label>
+              <label>
+                <span>Amount</span>
+                <input type="number" name="incoming_Agri_amount" min="0" step="0.01" value="0" required>
+              </label>
+            </article>
+
+            <article class="setup-card">
+              <h3>Retail</h3>
+              <label>
+                <span>Pockets</span>
+                <input type="number" name="incoming_Retail_pockets" min="0" step="1" value="0" required>
+              </label>
+              <label>
+                <span>Weight</span>
+                <input type="number" name="incoming_Retail_weight" min="0" step="0.001" value="0" required>
+              </label>
+              <label>
+                <span>Amount</span>
+                <input type="number" name="incoming_Retail_amount" min="0" step="0.01" value="0" required>
+              </label>
+            </article>
+
+            <article class="setup-card">
+              <h3>KCC</h3>
+              <label>
+                <span>Pockets</span>
+                <input type="number" name="incoming_KCC_pockets" min="0" step="1" value="0" required>
+              </label>
+              <label>
+                <span>Weight</span>
+                <input type="number" name="incoming_KCC_weight" min="0" step="0.001" value="0" required>
+              </label>
+              <label>
+                <span>Amount</span>
+                <input type="number" name="incoming_KCC_amount" min="0" step="0.01" value="0" required>
+              </label>
+            </article>
+
+            <article class="setup-card">
+              <h3>MSME</h3>
+              <label>
+                <span>Pockets</span>
+                <input type="number" name="incoming_MSME_pockets" min="0" step="1" value="0" required>
+              </label>
+              <label>
+                <span>Weight</span>
+                <input type="number" name="incoming_MSME_weight" min="0" step="0.001" value="0" required>
+              </label>
+              <label>
+                <span>Amount</span>
+                <input type="number" name="incoming_MSME_amount" min="0" step="0.01" value="0" required>
+              </label>
+            </article>
+          </div>
+
+          <div class="manual-appraiser-card">
+            <p class="manual-entry-title">Incoming Appraiser Count</p>
+            <div class="manual-appraiser-grid">
+              <label>
+                <span>Selvaraj</span>
+                <input type="number" name="incoming_appraiser_Selvaraj" min="0" step="1" value="0" required>
+              </label>
+              <label>
+                <span>NallaThambi</span>
+                <input type="number" name="incoming_appraiser_NallaThambi" min="0" step="1" value="0" required>
+              </label>
+              <label>
+                <span>Raja</span>
+                <input type="number" name="incoming_appraiser_Raja" min="0" step="1" value="0" required>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="manual-entry-panel hidden" data-manual-panel="outgoing">
+          <p class="manual-entry-title">Outgoing Entry</p>
+          <div class="setup-grid manual-entry-grid">
+            <article class="setup-card">
+              <h3>Agri</h3>
+              <label>
+                <span>Pockets</span>
+                <input type="number" name="outgoing_Agri_pockets" min="0" step="1" value="0" required>
+              </label>
+              <label>
+                <span>Weight</span>
+                <input type="number" name="outgoing_Agri_weight" min="0" step="0.001" value="0" required>
+              </label>
+              <label>
+                <span>Amount</span>
+                <input type="number" name="outgoing_Agri_amount" min="0" step="0.01" value="0" required>
+              </label>
+            </article>
+
+            <article class="setup-card">
+              <h3>Retail</h3>
+              <label>
+                <span>Pockets</span>
+                <input type="number" name="outgoing_Retail_pockets" min="0" step="1" value="0" required>
+              </label>
+              <label>
+                <span>Weight</span>
+                <input type="number" name="outgoing_Retail_weight" min="0" step="0.001" value="0" required>
+              </label>
+              <label>
+                <span>Amount</span>
+                <input type="number" name="outgoing_Retail_amount" min="0" step="0.01" value="0" required>
+              </label>
+            </article>
+
+            <article class="setup-card">
+              <h3>KCC</h3>
+              <label>
+                <span>Pockets</span>
+                <input type="number" name="outgoing_KCC_pockets" min="0" step="1" value="0" required>
+              </label>
+              <label>
+                <span>Weight</span>
+                <input type="number" name="outgoing_KCC_weight" min="0" step="0.001" value="0" required>
+              </label>
+              <label>
+                <span>Amount</span>
+                <input type="number" name="outgoing_KCC_amount" min="0" step="0.01" value="0" required>
+              </label>
+            </article>
+
+            <article class="setup-card">
+              <h3>MSME</h3>
+              <label>
+                <span>Pockets</span>
+                <input type="number" name="outgoing_MSME_pockets" min="0" step="1" value="0" required>
+              </label>
+              <label>
+                <span>Weight</span>
+                <input type="number" name="outgoing_MSME_weight" min="0" step="0.001" value="0" required>
+              </label>
+              <label>
+                <span>Amount</span>
+                <input type="number" name="outgoing_MSME_amount" min="0" step="0.01" value="0" required>
+              </label>
+            </article>
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <p class="muted-text">Save is allowed only after entering both incoming and outgoing values. Incoming appraiser counts should match the incoming pocket total.</p>
+          <button type="submit" class="primary-button">Save Manual Entry</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="adjustmentModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="adjustmentModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Balance Correction</p>
+          <h2 id="adjustmentModalTitle">Old Adjustment</h2>
+        </div>
+        <button type="button" class="icon-button" data-close-modal>&times;</button>
+      </div>
+
+      <form id="adjustmentForm" class="stacked-form">
+        <label>
+          <span>Date</span>
+          <input name="date" type="date" required>
+        </label>
+
+        <div class="inline-form-grid">
+          <label>
+            <span>Number of Pockets</span>
+            <input name="pockets" type="number" min="1" step="1" required>
+          </label>
+
+          <label>
+            <span>Category</span>
+            <select name="category" required>
+              <option value="Agri">Agri</option>
+              <option value="Retail">Retail</option>
+              <option value="KCC">KCC</option>
+              <option value="MSME">MSME</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="inline-form-grid">
+          <label>
+            <span>Weight</span>
+            <input name="weight" type="number" min="0.001" step="0.001" required>
+          </label>
+
+          <label>
+            <span>Amount</span>
+            <input name="amount" type="number" min="0.01" step="0.01" required>
+          </label>
+        </div>
+
+        <div class="form-footer">
+          <p class="muted-text">This subtracts from the selected category and blocks any negative balance.</p>
+          <button type="submit" class="primary-button danger">Apply Adjustment</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="closureModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="closureModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Loan Closure</p>
+          <h2 id="closureModalTitle">Close Loan</h2>
+        </div>
+        <button type="button" class="icon-button" data-close-modal>&times;</button>
+      </div>
+
+      <div id="closureLoanSummary" class="closure-loan-summary"></div>
+
+      <form id="closureForm" class="stacked-form">
+        <input id="closureLoanId" name="loanId" type="hidden">
+
+        <label>
+          <span>Closing Date</span>
+          <input name="closingDate" type="date" required>
+        </label>
+
+        <label>
+          <span>Interest Amount</span>
+          <input name="interestAmount" type="number" min="0" step="0.01" required>
+        </label>
+
+        <div class="form-footer">
+          <p class="muted-text">Closing removes one pocket, subtracts principal from totals, and marks the loan as closed.</p>
+          <button type="submit" class="primary-button">Confirm Closure</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="shareModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Daily Share</p>
+          <h2 id="shareModalTitle">Share Report</h2>
+        </div>
+        <button type="button" class="icon-button" data-close-modal>&times;</button>
+      </div>
+
+      <form id="shareFilterForm" class="stacked-form compact-form">
+        <label>
+          <span>Report Date</span>
+          <input id="shareDate" name="shareDate" type="date" required>
+        </label>
+      </form>
+
+      <div id="sharePreview" class="share-preview"></div>
+
+      <div class="share-actions">
+        <button id="exportPdfButton" type="button" class="action-button">Export PDF</button>
+        <button id="exportPngButton" type="button" class="action-button secondary">Export PNG</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
