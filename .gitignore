@@ -1,9 +1,0 @@
-node_modules/
-*.sqlite
-*.sqlite-journal
-*.sqlite-shm
-*.sqlite-wal
-.env
-.env.*
-.DS_Store
-Thumbs.db
