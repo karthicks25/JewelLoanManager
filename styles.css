@@ -630,6 +630,11 @@ textarea:focus {
   color: #fff;
 }
 
+.secondary-mini {
+  background: linear-gradient(135deg, #e0b64a, var(--accent));
+  color: #2f2200;
+}
+
 .mini-button[disabled] {
   background: rgba(24, 34, 50, 0.1);
   color: var(--muted);
@@ -674,11 +679,33 @@ textarea:focus {
   margin-bottom: 18px;
 }
 
+.share-preview {
+  display: flex;
+  justify-content: center;
+}
+
 .share-card {
+  width: min(100%, 430px);
+  margin: 0 auto;
   padding: 22px;
+  border-radius: 28px;
+  border: 1px solid rgba(29, 63, 145, 0.12);
+  box-shadow: 0 20px 44px rgba(16, 39, 95, 0.14);
   background:
-    linear-gradient(135deg, rgba(29, 63, 145, 0.1), rgba(211, 163, 41, 0.12)),
+    linear-gradient(180deg, rgba(29, 63, 145, 0.11), rgba(255, 255, 255, 0.96) 24%),
+    linear-gradient(135deg, rgba(29, 63, 145, 0.08), rgba(211, 163, 41, 0.12)),
     rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+  position: relative;
+}
+
+.share-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
 }
 
 .share-card h3 {
@@ -688,15 +715,18 @@ textarea:focus {
 }
 
 .share-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   margin-bottom: 16px;
+  padding-top: 8px;
 }
 
 .share-date-block {
   text-align: right;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(29, 63, 145, 0.06);
 }
 
 .share-date-block strong {
@@ -704,22 +734,26 @@ textarea:focus {
 }
 
 .share-table-wrap {
-  overflow: auto;
+  overflow: visible;
   margin-top: 16px;
 }
 
 .share-table {
   width: 100%;
-  min-width: 860px;
+  min-width: 0;
   border-collapse: collapse;
   background: rgba(255, 255, 255, 0.92);
+  table-layout: fixed;
+  border-radius: 18px;
+  overflow: hidden;
 }
 
 .share-table th,
 .share-table td {
   border: 1px solid rgba(29, 63, 145, 0.12);
-  padding: 12px 14px;
+  padding: 12px 10px;
   text-align: left;
+  font-size: 0.95rem;
 }
 
 .share-table th {
@@ -846,5 +880,24 @@ textarea:focus {
 
   .modal {
     padding: 18px;
+  }
+
+  .share-card {
+    width: 100%;
+    padding: 18px;
+  }
+
+  .share-header {
+    grid-template-columns: 1fr;
+  }
+
+  .share-date-block {
+    text-align: left;
+  }
+
+  .share-table th,
+  .share-table td {
+    padding: 10px 8px;
+    font-size: 0.87rem;
   }
 }
