@@ -1,13 +1,19 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 const { DatabaseSync } = require("node:sqlite");
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
-const DATA_DIR = process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || ROOT;
+const DEFAULT_DATA_DIR = process.platform === "win32"
+  ? path.join(process.env.LOCALAPPDATA || process.env.APPDATA || os.homedir(), "JewelLoanManagement")
+  : path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share"), "JewelLoanManagement");
+const DATA_DIR = process.env.DB_FILE
+  ? path.dirname(process.env.DB_FILE)
+  : process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || DEFAULT_DATA_DIR;
 fs.mkdirSync(DATA_DIR, { recursive: true });
-const DB_FILE = path.join(DATA_DIR, "jewel-loan-management.sqlite");
+const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, "jewel-loan-management.sqlite");
 const STATE_KEY = "main";
 
 const CATEGORY_NAMES = ["Agri", "Retail", "KCC", "MSME"];
@@ -58,6 +64,7 @@ const server = http.createServer(async (request, response) => {
     sendJson(response, 200, {
       status: "ok",
       database: "connected",
+      dbFile: DB_FILE,
       timestamp: new Date().toISOString(),
     });
     return;
