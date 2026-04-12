@@ -49,9 +49,12 @@
 
       <main class="dashboard-grid">
         <section class="panel hero-panel">
-          <div>
-            <p class="eyebrow">Overall Totals</p>
-            <h2>Current branch balance</h2>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Overall Totals</p>
+              <h2>Current branch balance</h2>
+            </div>
+            <button id="openTotalsEditButton" type="button" class="action-button secondary">Edit Totals</button>
           </div>
 
           <div class="total-grid">
@@ -221,6 +224,7 @@
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Closure</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="loanReportBody"></tbody>
@@ -379,6 +383,85 @@
         <div class="form-footer">
           <p class="muted-text">Saving adds one pocket and updates the selected category totals immediately.</p>
           <button type="submit" class="primary-button">Save Loan</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="totalsEditModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="totalsEditModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Balance Correction</p>
+          <h2 id="totalsEditModalTitle">Edit Overall Values</h2>
+        </div>
+        <button type="button" class="icon-button" data-close-modal>&times;</button>
+      </div>
+
+      <form id="totalsEditForm" class="stacked-form">
+        <div class="setup-grid">
+          <article class="setup-card">
+            <h3>Agri</h3>
+            <label>
+              <span>Pockets</span>
+              <input type="number" name="Agri_pockets" min="0" step="1" required>
+            </label>
+            <label>
+              <span>Weight</span>
+              <input type="number" name="Agri_weight" min="0" step="0.001" required>
+            </label>
+            <label>
+              <span>Amount</span>
+              <input type="number" name="Agri_amount" min="0" step="0.01" required>
+            </label>
+          </article>
+          <article class="setup-card">
+            <h3>Retail</h3>
+            <label>
+              <span>Pockets</span>
+              <input type="number" name="Retail_pockets" min="0" step="1" required>
+            </label>
+            <label>
+              <span>Weight</span>
+              <input type="number" name="Retail_weight" min="0" step="0.001" required>
+            </label>
+            <label>
+              <span>Amount</span>
+              <input type="number" name="Retail_amount" min="0" step="0.01" required>
+            </label>
+          </article>
+          <article class="setup-card">
+            <h3>KCC</h3>
+            <label>
+              <span>Pockets</span>
+              <input type="number" name="KCC_pockets" min="0" step="1" required>
+            </label>
+            <label>
+              <span>Weight</span>
+              <input type="number" name="KCC_weight" min="0" step="0.001" required>
+            </label>
+            <label>
+              <span>Amount</span>
+              <input type="number" name="KCC_amount" min="0" step="0.01" required>
+            </label>
+          </article>
+          <article class="setup-card">
+            <h3>MSME</h3>
+            <label>
+              <span>Pockets</span>
+              <input type="number" name="MSME_pockets" min="0" step="1" required>
+            </label>
+            <label>
+              <span>Weight</span>
+              <input type="number" name="MSME_weight" min="0" step="0.001" required>
+            </label>
+            <label>
+              <span>Amount</span>
+              <input type="number" name="MSME_amount" min="0" step="0.01" required>
+            </label>
+          </article>
+        </div>
+        <div class="form-footer">
+          <p class="muted-text">This directly updates live category balances and refreshes the overall totals immediately.</p>
+          <button type="submit" class="primary-button">Save Totals</button>
         </div>
       </form>
     </div>
@@ -646,6 +729,100 @@
         <div class="form-footer">
           <p class="muted-text">Closing removes one pocket, subtracts principal from totals, and marks the loan as closed.</p>
           <button type="submit" class="primary-button">Confirm Closure</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="loanEditModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="loanEditModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Loan Correction</p>
+          <h2 id="loanEditModalTitle">Edit Loan Entry</h2>
+        </div>
+        <button type="button" class="icon-button" data-close-modal>&times;</button>
+      </div>
+
+      <form id="loanEditForm" class="stacked-form">
+        <input id="editLoanId" name="loanId" type="hidden">
+
+        <label>
+          <span>Name</span>
+          <input name="name" type="text" maxlength="120" required>
+        </label>
+
+        <label>
+          <span>Card Number</span>
+          <input name="cardNumber" type="text" maxlength="40" required>
+        </label>
+
+        <label>
+          <span>Date</span>
+          <input name="date" type="date" required>
+        </label>
+
+        <label>
+          <span>Address</span>
+          <textarea name="address" rows="3" maxlength="250" required></textarea>
+        </label>
+
+        <div class="inline-form-grid">
+          <label>
+            <span>Weight</span>
+            <input name="weight" type="number" min="0.001" step="0.001" required>
+          </label>
+
+          <label>
+            <span>Amount</span>
+            <input name="amount" type="number" min="0.01" step="0.01" required>
+          </label>
+        </div>
+
+        <div class="inline-form-grid">
+          <label>
+            <span>Category</span>
+            <select name="category" required>
+              <option value="Agri">Agri</option>
+              <option value="Retail">Retail</option>
+              <option value="KCC">KCC</option>
+              <option value="MSME">MSME</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Appraiser</span>
+            <select name="appraiser" required>
+              <option value="Selvaraj">Selvaraj</option>
+              <option value="NallaThambi">NallaThambi</option>
+              <option value="Raja">Raja</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="inline-form-grid">
+          <label>
+            <span>Status</span>
+            <select id="editLoanStatus" name="status" required>
+              <option value="Open">Open</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="loanEditClosureFields" class="inline-form-grid hidden">
+          <label>
+            <span>Closing Date</span>
+            <input name="closingDate" type="date">
+          </label>
+
+          <label>
+            <span>Interest Amount</span>
+            <input name="interestAmount" type="number" min="0" step="0.01">
+          </label>
+        </div>
+
+        <div class="form-footer">
+          <p class="muted-text">Editing recalculates category balances and current-month appraiser counts automatically.</p>
+          <button type="submit" class="primary-button">Save Changes</button>
         </div>
       </form>
     </div>
