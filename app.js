@@ -25,13 +25,16 @@ const elements = {
   loginForm: document.getElementById("loginForm"),
   logoutButton: document.getElementById("logoutButton"),
   categorySetupForm: document.getElementById("categorySetupForm"),
+  totalsEditForm: document.getElementById("totalsEditForm"),
   entryForm: document.getElementById("entryForm"),
   manualEntryForm: document.getElementById("manualEntryForm"),
   adjustmentForm: document.getElementById("adjustmentForm"),
   closureForm: document.getElementById("closureForm"),
+  loanEditForm: document.getElementById("loanEditForm"),
   shareFilterForm: document.getElementById("shareFilterForm"),
   openReportButton: document.getElementById("openReportButton"),
   openSummaryReportButton: document.getElementById("openSummaryReportButton"),
+  openTotalsEditButton: document.getElementById("openTotalsEditButton"),
   backToDashboardButton: document.getElementById("backToDashboardButton"),
   backFromSummaryButton: document.getElementById("backFromSummaryButton"),
   modalOverlay: document.getElementById("modalOverlay"),
@@ -59,6 +62,9 @@ const elements = {
   setupStatus: document.getElementById("setupStatus"),
   closureLoanSummary: document.getElementById("closureLoanSummary"),
   closureLoanId: document.getElementById("closureLoanId"),
+  editLoanId: document.getElementById("editLoanId"),
+  editLoanStatus: document.getElementById("editLoanStatus"),
+  loanEditClosureFields: document.getElementById("loanEditClosureFields"),
   shareDate: document.getElementById("shareDate"),
   toast: document.getElementById("toast"),
   todayStamp: document.getElementById("todayStamp"),
@@ -121,13 +127,16 @@ function attachEventListeners() {
   elements.loginForm.addEventListener("submit", handleLogin);
   elements.logoutButton.addEventListener("click", handleLogout);
   elements.categorySetupForm.addEventListener("submit", handleCategorySetup);
+  elements.totalsEditForm.addEventListener("submit", handleTotalsEdit);
   elements.entryForm.addEventListener("submit", handleNewEntry);
   elements.manualEntryForm.addEventListener("submit", handleManualEntry);
   elements.adjustmentForm.addEventListener("submit", handleOldAdjustment);
   elements.closureForm.addEventListener("submit", handleLoanClosure);
+  elements.loanEditForm.addEventListener("submit", handleLoanEdit);
   elements.shareFilterForm.addEventListener("input", renderSharePreview);
   elements.openReportButton.addEventListener("click", () => switchView("report"));
   elements.openSummaryReportButton.addEventListener("click", () => switchView("summary"));
+  elements.openTotalsEditButton.addEventListener("click", prepareTotalsEditModal);
   elements.backToDashboardButton.addEventListener("click", () => switchView("dashboard"));
   elements.backFromSummaryButton.addEventListener("click", () => switchView("dashboard"));
   elements.exportPdfButton.addEventListener("click", exportShareAsPdf);
@@ -145,6 +154,7 @@ function attachEventListeners() {
   elements.summaryStartDate.addEventListener("input", renderSummaryReport);
   elements.summaryEndDate.addEventListener("input", renderSummaryReport);
   elements.summaryCategoryFilter.addEventListener("change", renderSummaryReport);
+  elements.editLoanStatus.addEventListener("change", toggleLoanEditClosureFields);
 
   document.querySelectorAll("[data-open-modal]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -172,13 +182,17 @@ function attachEventListeners() {
   });
 
   elements.loanReportBody.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-close-loan]");
+    const closeButton = event.target.closest("[data-close-loan]");
+    const editButton = event.target.closest("[data-edit-loan]");
 
-    if (!button) {
+    if (closeButton) {
+      prepareClosureModal(closeButton.dataset.closeLoan);
       return;
     }
 
-    prepareClosureModal(button.dataset.closeLoan);
+    if (editButton) {
+      prepareLoanEditModal(editButton.dataset.editLoan);
+    }
   });
 
   window.addEventListener("keydown", (event) => {
@@ -268,6 +282,49 @@ async function handleCategorySetup(event) {
   await saveState(appState);
   renderAll();
   showToast("Category balances saved.", "success");
+}
+
+function prepareTotalsEditModal() {
+  for (const category of CATEGORY_NAMES) {
+    const values = appState.categories[category];
+    elements.totalsEditForm.elements[`${category}_pockets`].value = `${values.pockets}`;
+    elements.totalsEditForm.elements[`${category}_weight`].value = `${values.weight}`;
+    elements.totalsEditForm.elements[`${category}_amount`].value = `${values.amount}`;
+  }
+
+  openModal("totalsEditModal");
+}
+
+async function handleTotalsEdit(event) {
+  event.preventDefault();
+  const updatedCategories = {};
+
+  for (const category of CATEGORY_NAMES) {
+    const pockets = Number(elements.totalsEditForm.elements[`${category}_pockets`].value);
+    const weight = Number(elements.totalsEditForm.elements[`${category}_weight`].value);
+    const amount = Number(elements.totalsEditForm.elements[`${category}_amount`].value);
+
+    if (
+      !Number.isInteger(pockets) ||
+      pockets < 0 ||
+      ![weight, amount].every((value) => Number.isFinite(value) && value >= 0)
+    ) {
+      showToast(`Enter valid totals for ${category}.`, "error");
+      return;
+    }
+
+    updatedCategories[category] = {
+      pockets: Math.trunc(pockets),
+      weight: roundToThree(weight),
+      amount: roundToTwo(amount),
+    };
+  }
+
+  appState.categories = updatedCategories;
+  await saveState(appState);
+  renderAll();
+  closeActiveModal();
+  showToast("Overall values updated.", "success");
 }
 
 async function handleNewEntry(event) {
@@ -485,6 +542,129 @@ async function handleOldAdjustment(event) {
   showToast("Old adjustment saved.", "success");
 }
 
+function prepareLoanEditModal(loanId) {
+  const loan = appState.loans.find((item) => item.id === loanId);
+
+  if (!loan) {
+    showToast("Loan not found.", "error");
+    return;
+  }
+
+  const form = elements.loanEditForm.elements;
+  elements.editLoanId.value = loan.id;
+  form.name.value = loan.name;
+  form.cardNumber.value = loan.cardNumber;
+  form.date.value = loan.date;
+  form.address.value = loan.address;
+  form.weight.value = `${loan.weight}`;
+  form.amount.value = `${loan.amount}`;
+  form.category.value = loan.category;
+  form.appraiser.value = loan.appraiser;
+  form.status.value = loan.status;
+  form.closingDate.value = loan.closingDate || "";
+  form.interestAmount.value = `${loan.interestAmount ?? 0}`;
+  toggleLoanEditClosureFields();
+  openModal("loanEditModal");
+}
+
+function toggleLoanEditClosureFields() {
+  const isClosed = elements.editLoanStatus.value === "Closed";
+  elements.loanEditClosureFields.classList.toggle("hidden", !isClosed);
+  elements.loanEditForm.elements.closingDate.required = isClosed;
+  elements.loanEditForm.elements.interestAmount.required = isClosed;
+}
+
+async function handleLoanEdit(event) {
+  event.preventDefault();
+
+  const form = elements.loanEditForm.elements;
+  const loan = appState.loans.find((item) => item.id === elements.editLoanId.value);
+
+  if (!loan) {
+    showToast("Loan not found.", "error");
+    return;
+  }
+
+  const updatedCardNumber = form.cardNumber.value.trim();
+  if (appState.loans.some((item) => item.id !== loan.id && item.cardNumber.toLowerCase() === updatedCardNumber.toLowerCase())) {
+    showToast("Card number must be unique.", "error");
+    return;
+  }
+
+  const updatedLoan = {
+    ...loan,
+    name: form.name.value.trim(),
+    cardNumber: updatedCardNumber,
+    date: form.date.value,
+    address: form.address.value.trim(),
+    weight: roundToThree(Number(form.weight.value)),
+    amount: roundToTwo(Number(form.amount.value)),
+    category: form.category.value,
+    appraiser: form.appraiser.value,
+    status: form.status.value,
+  };
+
+  if (!updatedLoan.name || !updatedLoan.address || !updatedLoan.date) {
+    showToast("Complete all required loan fields.", "error");
+    return;
+  }
+
+  if (!isPositive(updatedLoan.weight) || !isPositive(updatedLoan.amount)) {
+    showToast("Weight and amount must be greater than zero.", "error");
+    return;
+  }
+
+  if (loan.status === "Open") {
+    const currentCategory = appState.categories[loan.category];
+    if (
+      currentCategory.pockets < 1 ||
+      currentCategory.weight < loan.weight ||
+      currentCategory.amount < loan.amount
+    ) {
+      showToast("Current totals do not allow reversing the existing loan entry.", "error");
+      return;
+    }
+    decrementCategory(loan.category, { pockets: 1, weight: loan.weight, amount: loan.amount });
+  }
+
+  if (updatedLoan.status === "Closed") {
+    const interestAmount = Number(form.interestAmount.value);
+    const closingDate = form.closingDate.value;
+
+    if (!closingDate || !Number.isFinite(interestAmount) || interestAmount < 0) {
+      if (loan.status === "Open") {
+        incrementCategory(loan.category, { pockets: 1, weight: loan.weight, amount: loan.amount });
+      }
+      showToast("Enter a valid closing date and interest amount.", "error");
+      return;
+    }
+
+    updatedLoan.closingDate = closingDate;
+    updatedLoan.interestAmount = roundToTwo(interestAmount);
+    updatedLoan.closureTotal = roundToTwo(updatedLoan.amount + updatedLoan.interestAmount);
+    updatedLoan.closedAt = loan.status === "Closed" ? loan.closedAt : new Date().toISOString();
+  } else {
+    updatedLoan.closingDate = null;
+    updatedLoan.interestAmount = 0;
+    updatedLoan.closureTotal = 0;
+    updatedLoan.closedAt = null;
+  }
+
+  if (updatedLoan.status === "Open") {
+    incrementCategory(updatedLoan.category, {
+      pockets: 1,
+      weight: updatedLoan.weight,
+      amount: updatedLoan.amount,
+    });
+  }
+
+  Object.assign(loan, updatedLoan);
+  await saveState(appState);
+  renderAll();
+  closeActiveModal();
+  showToast("Loan entry updated.", "success");
+}
+
 function prepareClosureModal(loanId) {
   const loan = appState.loans.find((item) => item.id === loanId);
 
@@ -633,9 +813,12 @@ function renderLoanReport() {
               : `${formatShortDate(loan.closingDate)} / ${formatCurrency(loan.closureTotal)}`
           }
         </td>
+        <td>
+          <button type="button" class="mini-button secondary-mini" data-edit-loan="${loan.id}">Edit</button>
+        </td>
       </tr>
     `).join("")
-    : '<tr><td colspan="9">No loans match the current filters.</td></tr>';
+    : '<tr><td colspan="10">No loans match the current filters.</td></tr>';
 }
 
 function getFilteredLoans() {
@@ -1324,91 +1507,166 @@ function showToast(message, type = "success") {
 async function exportShareAsPng() {
   const report = getShareReport(elements.shareDate.value);
   const canvas = document.createElement("canvas");
-  canvas.width = 1600;
-  canvas.height = 900;
+  canvas.width = 1200;
+  canvas.height = 1600;
   const context = canvas.getContext("2d");
 
-  context.fillStyle = "#edf3fb";
+  context.fillStyle = "#eef3ff";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
   const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, "#1d3f91");
+  gradient.addColorStop(0, "#173983");
+  gradient.addColorStop(0.58, "#1d3f91");
   gradient.addColorStop(1, "#d3a329");
   context.fillStyle = gradient;
-  context.fillRect(60, 60, canvas.width - 120, canvas.height - 120);
+  context.fillRect(0, 0, canvas.width, canvas.height);
 
-  context.fillStyle = "rgba(255,255,255,0.95)";
-  roundRect(context, 120, 120, canvas.width - 240, canvas.height - 240, 28);
+  context.fillStyle = "rgba(255,255,255,0.08)";
+  context.beginPath();
+  context.arc(170, 170, 220, 0, Math.PI * 2);
+  context.fill();
+  context.beginPath();
+  context.arc(canvas.width - 120, 360, 190, 0, Math.PI * 2);
+  context.fill();
+  context.beginPath();
+  context.arc(canvas.width - 90, canvas.height - 220, 260, 0, Math.PI * 2);
+  context.fill();
+
+  const sheetX = 58;
+  const sheetY = 72;
+  const sheetWidth = canvas.width - 116;
+  const sheetHeight = canvas.height - 144;
+
+  context.fillStyle = "rgba(255,255,255,0.97)";
+  roundRect(context, sheetX, sheetY, sheetWidth, sheetHeight, 40);
+  context.fill();
+
+  context.fillStyle = "#eef3ff";
+  roundRect(context, sheetX + 44, sheetY + 46, sheetWidth - 88, 210, 28);
   context.fill();
 
   context.fillStyle = "#0f2237";
-  context.font = "bold 42px Georgia";
-  context.fillText(BANK_NAME, 180, 210);
-  context.font = "24px Trebuchet MS";
-  context.fillText(BRANCH_NAME, 180, 252);
-  context.textAlign = "right";
-  context.font = "22px Trebuchet MS";
-  context.fillText(`Date: ${formatLongDate(report.date)}`, canvas.width - 180, 220);
-  context.textAlign = "left";
+  context.font = "bold 48px Georgia";
+  context.fillText(BANK_NAME, sheetX + 78, sheetY + 128);
+  context.font = "26px Trebuchet MS";
+  context.fillStyle = "#4c5f81";
+  context.fillText(BRANCH_NAME, sheetX + 78, sheetY + 172);
+
+  const datePillWidth = 340;
+  const datePillX = sheetX + sheetWidth - datePillWidth - 78;
+  const datePillY = sheetY + 78;
+  context.fillStyle = "#fff4d1";
+  roundRect(context, datePillX, datePillY, datePillWidth, 110, 24);
+  context.fill();
+  context.fillStyle = "#8f6910";
+  context.font = "bold 18px Trebuchet MS";
+  context.fillText("DATE", datePillX + 22, datePillY + 28);
+  context.fillStyle = "#14233d";
+  context.font = "bold 21px Trebuchet MS";
+  wrapCanvasText(context, formatLongDate(report.date), datePillX + 22, datePillY + 58, datePillWidth - 44, 24);
 
   const columns = [
-    { label: "", value: "" },
-    { label: "No. of Pockets", value: "" },
-    { label: "Total Weight", value: "" },
-    { label: "Total Amount", value: "" },
+    "Flow",
+    "Pockets",
+    "Weight",
+    "Amount",
   ];
 
   const rows = [
-    ["Incoming", `${report.incomingPockets}`, formatWeight(report.incomingWeight), formatCurrency(report.incomingAmount)],
-    ["Outgoing", `${report.outgoingPockets}`, formatWeight(report.outgoingWeight), formatCurrency(report.outgoingAmount)],
+    {
+      label: "Incoming",
+      pockets: `${report.incomingPockets}`,
+      weight: formatWeight(report.incomingWeight),
+      amount: formatCurrency(report.incomingAmount),
+      fill: "#eef4ff",
+      accent: "#1d3f91",
+      labelColor: "#16316f",
+    },
+    {
+      label: "Outgoing",
+      pockets: `${report.outgoingPockets}`,
+      weight: formatWeight(report.outgoingWeight),
+      amount: formatCurrency(report.outgoingAmount),
+      fill: "#fff6df",
+      accent: "#d3a329",
+      labelColor: "#7b5800",
+    },
   ];
 
-  const left = 220;
-  const top = 340;
-  const columnWidth = 290;
+  const tableX = sheetX + 44;
+  const tableY = sheetY + 318;
+  const tableWidth = sheetWidth - 88;
+  const columnRatios = [0.23, 0.2, 0.23, 0.34];
+  const columnWidths = columnRatios.map((ratio) => Math.round(tableWidth * ratio));
+  columnWidths[columnWidths.length - 1] = tableWidth - columnWidths.slice(0, -1).reduce((sum, value) => sum + value, 0);
   const headerHeight = 82;
-  const bodyHeight = 76;
+  const rowHeight = 182;
+  const gap = 24;
 
-  context.font = "bold 22px Trebuchet MS";
+  context.fillStyle = "#f3f6fe";
+  roundRect(context, tableX, tableY, tableWidth, headerHeight, 24);
+  context.fill();
+
+  context.font = "bold 24px Trebuchet MS";
+  let cursorX = tableX;
   columns.forEach((column, index) => {
-    const x = left + index * columnWidth;
-    context.fillStyle = "#e5ecfa";
-    context.fillRect(x, top, columnWidth, headerHeight);
-    context.strokeStyle = "#c2d1ee";
-    context.strokeRect(x, top, columnWidth, headerHeight);
     context.fillStyle = "#1d3f91";
-    wrapCanvasText(context, column.label, x + 14, top + 30, columnWidth - 24, 24);
+    wrapCanvasText(context, column, cursorX + 18, tableY + 32, columnWidths[index] - 28, 24);
+    cursorX += columnWidths[index];
   });
 
-  context.font = "22px Trebuchet MS";
   rows.forEach((row, rowIndex) => {
-    row.forEach((value, columnIndex) => {
-      const x = left + columnIndex * columnWidth;
-      const y = top + headerHeight + rowIndex * bodyHeight;
-      context.fillStyle = "#ffffff";
-      context.fillRect(x, y, columnWidth, bodyHeight);
-      context.strokeStyle = "#c2d1ee";
-      context.strokeRect(x, y, columnWidth, bodyHeight);
-      context.fillStyle = "#10275f";
-      wrapCanvasText(context, value, x + 14, y + 42, columnWidth - 24, 24);
+    const rowY = tableY + headerHeight + 20 + rowIndex * (rowHeight + gap);
+
+    context.fillStyle = row.fill;
+    roundRect(context, tableX, rowY, tableWidth, rowHeight, 28);
+    context.fill();
+
+    context.fillStyle = row.accent;
+    roundRect(context, tableX, rowY, 16, rowHeight, 12);
+    context.fill();
+
+    let cellX = tableX;
+    const rowValues = [row.label, row.pockets, row.weight, row.amount];
+
+    rowValues.forEach((value, columnIndex) => {
+      if (columnIndex > 0) {
+        context.strokeStyle = "rgba(29, 63, 145, 0.08)";
+        context.beginPath();
+        context.moveTo(cellX, rowY + 24);
+        context.lineTo(cellX, rowY + rowHeight - 24);
+        context.stroke();
+      }
+
+      if (columnIndex === 0) {
+        context.fillStyle = row.labelColor;
+        context.font = "bold 32px Trebuchet MS";
+        wrapCanvasText(context, value, cellX + 34, rowY + 76, columnWidths[columnIndex] - 48, 36);
+      } else {
+        context.fillStyle = "#56657a";
+        context.font = "bold 16px Trebuchet MS";
+        context.fillText(columns[columnIndex].toUpperCase(), cellX + 22, rowY + 58);
+        context.fillStyle = "#14233d";
+        context.font = "bold 28px Trebuchet MS";
+        wrapCanvasText(context, value, cellX + 22, rowY + 110, columnWidths[columnIndex] - 36, 32);
+      }
+
+      cellX += columnWidths[columnIndex];
     });
   });
 
-  const diffTop = top + headerHeight + rows.length * bodyHeight;
-  context.fillStyle = "#fff7df";
-  context.fillRect(left, diffTop, columnWidth * 3, bodyHeight);
-  context.strokeStyle = "#c2d1ee";
-  context.strokeRect(left, diffTop, columnWidth * 3, bodyHeight);
+  const differenceY = tableY + headerHeight + 20 + rows.length * (rowHeight + gap);
+  context.fillStyle = "#f8f3e4";
+  roundRect(context, tableX, differenceY, tableWidth, 136, 28);
+  context.fill();
   context.fillStyle = "#7b5800";
-  context.font = "bold 22px Trebuchet MS";
-  context.fillText("Difference", left + 16, diffTop + 42);
-
-  context.fillStyle = "#ffffff";
-  context.fillRect(left + columnWidth * 3, diffTop, columnWidth, bodyHeight);
-  context.strokeStyle = "#c2d1ee";
-  context.strokeRect(left + columnWidth * 3, diffTop, columnWidth, bodyHeight);
+  context.font = "bold 24px Trebuchet MS";
+  context.fillText("Difference", tableX + 32, differenceY + 54);
+  context.textAlign = "right";
   context.fillStyle = report.differenceAmount < 0 ? "#c23535" : report.differenceAmount > 0 ? "#1f7a3d" : "#7b5800";
-  wrapCanvasText(context, formatCurrency(report.differenceAmount), left + columnWidth * 3 + 14, diffTop + 42, columnWidth - 24, 24);
+  context.font = "bold 36px Trebuchet MS";
+  context.fillText(formatCurrency(report.differenceAmount), tableX + tableWidth - 32, differenceY + 82);
+  context.textAlign = "left";
 
   const url = canvas.toDataURL("image/png");
   downloadUrl(url, `share-report-${report.date}.png`);
@@ -1798,86 +2056,165 @@ async function exportSummaryReportAsPng() {
   );
   const canvas = document.createElement("canvas");
   const rowCount = Math.max(summary.rows.length, 1);
-  canvas.width = 1900;
-  canvas.height = 420 + rowCount * 86;
+  canvas.width = 1200;
+  canvas.height = Math.max(1600, 440 + rowCount * 248);
   const context = canvas.getContext("2d");
 
-  context.fillStyle = "#edf3fb";
+  context.fillStyle = "#eef3ff";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
   const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, "#1d3f91");
+  gradient.addColorStop(0, "#173983");
+  gradient.addColorStop(0.58, "#1d3f91");
   gradient.addColorStop(1, "#d3a329");
   context.fillStyle = gradient;
-  context.fillRect(60, 60, canvas.width - 120, canvas.height - 120);
+  context.fillRect(0, 0, canvas.width, canvas.height);
 
-  context.fillStyle = "rgba(255,255,255,0.96)";
-  roundRect(context, 110, 110, canvas.width - 220, canvas.height - 220, 28);
+  context.fillStyle = "rgba(255,255,255,0.08)";
+  context.beginPath();
+  context.arc(180, 180, 220, 0, Math.PI * 2);
+  context.fill();
+  context.beginPath();
+  context.arc(canvas.width - 120, 350, 190, 0, Math.PI * 2);
+  context.fill();
+  context.beginPath();
+  context.arc(canvas.width - 80, canvas.height - 180, 250, 0, Math.PI * 2);
+  context.fill();
+
+  const sheetX = 58;
+  const sheetY = 72;
+  const sheetWidth = canvas.width - 116;
+  const sheetHeight = canvas.height - 144;
+
+  context.fillStyle = "rgba(255,255,255,0.97)";
+  roundRect(context, sheetX, sheetY, sheetWidth, sheetHeight, 40);
+  context.fill();
+
+  context.fillStyle = "#eef3ff";
+  roundRect(context, sheetX + 44, sheetY + 46, sheetWidth - 88, 224, 28);
   context.fill();
 
   context.fillStyle = "#0f2237";
-  context.font = "bold 42px Georgia";
-  context.fillText(BANK_NAME, 160, 190);
-  context.font = "24px Trebuchet MS";
-  context.fillText(BRANCH_NAME, 160, 228);
-  context.textAlign = "right";
-  context.fillText(summary.rangeLabel, canvas.width - 160, 190);
-  context.fillText(summary.categoryLabel, canvas.width - 160, 228);
-  context.textAlign = "left";
+  context.font = "bold 48px Georgia";
+  context.fillText(BANK_NAME, sheetX + 78, sheetY + 128);
+  context.font = "26px Trebuchet MS";
+  context.fillStyle = "#4c5f81";
+  context.fillText(BRANCH_NAME, sheetX + 78, sheetY + 172);
 
-  const columns = [
-    "Category",
-    "Incoming Pockets",
-    "Incoming Weight",
-    "Incoming Amount",
-    "Outgoing Pockets",
-    "Outgoing Weight",
-    "Outgoing Amount",
-  ];
-  const startX = 145;
-  const top = 290;
-  const columnWidth = 228;
-  const headerHeight = 74;
-  const rowHeight = 74;
-
+  const infoRangeText = summary.rangeLabel.replace(/^[^|]+\|\s*/, "");
+  const infoPillWidth = 360;
+  const infoPillX = sheetX + sheetWidth - infoPillWidth - 78;
+  const infoPillY = sheetY + 72;
+  context.fillStyle = "#fff4d1";
+  roundRect(context, infoPillX, infoPillY, infoPillWidth, 124, 24);
+  context.fill();
+  context.fillStyle = "#8f6910";
+  context.font = "bold 18px Trebuchet MS";
+  context.fillText(summary.period.toUpperCase(), infoPillX + 22, infoPillY + 30);
+  context.fillStyle = "#14233d";
   context.font = "bold 19px Trebuchet MS";
-  columns.forEach((label, index) => {
-    const x = startX + index * columnWidth;
-    context.fillStyle = "#e5ecfa";
-    context.fillRect(x, top, columnWidth, headerHeight);
-    context.strokeStyle = "#c2d1ee";
-    context.strokeRect(x, top, columnWidth, headerHeight);
-    context.fillStyle = "#1d3f91";
-    wrapCanvasText(context, label, x + 12, top + 28, columnWidth - 24, 22);
-  });
+  wrapCanvasText(context, infoRangeText, infoPillX + 22, infoPillY + 58, infoPillWidth - 44, 22);
+
+  context.fillStyle = "#5c6783";
+  context.font = "21px Trebuchet MS";
+  wrapCanvasText(context, summary.categoryLabel, sheetX + 78, sheetY + 226, 520, 26);
+
+  const cardX = sheetX + 44;
+  const cardWidth = sheetWidth - 88;
+  const cardHeight = 212;
+  const statBlockWidth = Math.floor((cardWidth - 72) / 2);
+  const statInnerWidth = Math.floor((statBlockWidth - 42) / 3);
+  const startY = sheetY + 320;
 
   summary.rows.forEach((row, rowIndex) => {
-    const values = [
-      row.category,
-      `${row.incomingPockets}`,
-      formatWeight(row.incomingWeight),
-      formatCurrency(row.incomingAmount),
-      `${row.outgoingPockets}`,
-      formatWeight(row.outgoingWeight),
-      formatCurrency(row.outgoingAmount),
-    ];
+    const cardY = startY + rowIndex * 232;
 
-    values.forEach((value, columnIndex) => {
-      const x = startX + columnIndex * columnWidth;
-      const y = top + headerHeight + rowIndex * rowHeight;
-      context.fillStyle = "#ffffff";
-      context.fillRect(x, y, columnWidth, rowHeight);
-      context.strokeStyle = "#c2d1ee";
-      context.strokeRect(x, y, columnWidth, rowHeight);
-      context.fillStyle = "#10275f";
-      context.font = "18px Trebuchet MS";
-      wrapCanvasText(context, value, x + 12, y + 30, columnWidth - 20, 22);
-    });
+    context.fillStyle = "#ffffff";
+    roundRect(context, cardX, cardY, cardWidth, cardHeight, 30);
+    context.fill();
+
+    context.fillStyle = "#edf3ff";
+    roundRect(context, cardX + 18, cardY + 16, cardWidth - 36, cardHeight - 32, 26);
+    context.fill();
+
+    context.fillStyle = row.category === "Overall" ? "#1d3f91" : "#d3a329";
+    roundRect(context, cardX, cardY, 18, cardHeight, 12);
+    context.fill();
+
+    context.fillStyle = "#14233d";
+    context.font = "bold 34px Trebuchet MS";
+    context.fillText(row.category, cardX + 38, cardY + 56);
+
+    drawSummaryStatBlock(
+      context,
+      cardX + 34,
+      cardY + 86,
+      statBlockWidth,
+      94,
+      "Incoming",
+      "#eef4ff",
+      "#1d3f91",
+      [
+        { label: "Pockets", value: `${row.incomingPockets}` },
+        { label: "Weight", value: formatWeight(row.incomingWeight) },
+        { label: "Amount", value: formatCurrency(row.incomingAmount) },
+      ],
+      statInnerWidth,
+    );
+
+    drawSummaryStatBlock(
+      context,
+      cardX + 38 + statBlockWidth,
+      cardY + 86,
+      statBlockWidth,
+      94,
+      "Outgoing",
+      "#fff6df",
+      "#b68512",
+      [
+        { label: "Pockets", value: `${row.outgoingPockets}` },
+        { label: "Weight", value: formatWeight(row.outgoingWeight) },
+        { label: "Amount", value: formatCurrency(row.outgoingAmount) },
+      ],
+      statInnerWidth,
+    );
   });
 
   const url = canvas.toDataURL("image/png");
-  downloadUrl(url, `summary-report-${elements.summaryPeriodFilter.value}-${elements.summaryAnchorDate.value}.png`);
+  const fileLabel = summary.period === "custom"
+    ? `${elements.summaryStartDate.value}-to-${elements.summaryEndDate.value}`
+    : elements.summaryAnchorDate.value;
+  downloadUrl(url, `summary-report-${elements.summaryPeriodFilter.value}-${fileLabel}.png`);
   showToast("Summary report PNG downloaded.", "success");
+}
+
+function drawSummaryStatBlock(context, x, y, width, height, title, fill, accent, stats, statWidth) {
+  context.fillStyle = fill;
+  roundRect(context, x, y, width, height, 24);
+  context.fill();
+
+  context.fillStyle = accent;
+  context.font = "bold 24px Trebuchet MS";
+  context.fillText(title, x + 18, y + 30);
+
+  stats.forEach((stat, index) => {
+    const statX = x + 18 + index * statWidth;
+
+    if (index > 0) {
+      context.strokeStyle = "rgba(29, 63, 145, 0.08)";
+      context.beginPath();
+      context.moveTo(statX - 12, y + 22);
+      context.lineTo(statX - 12, y + height - 18);
+      context.stroke();
+    }
+
+    context.fillStyle = "#5c6783";
+    context.font = "bold 14px Trebuchet MS";
+    context.fillText(stat.label.toUpperCase(), statX, y + 56);
+    context.fillStyle = "#14233d";
+    context.font = "bold 18px Trebuchet MS";
+    wrapCanvasText(context, stat.value, statX, y + 82, statWidth - 14, 20);
+  });
 }
 
 function downloadUrl(url, filename) {
@@ -1913,21 +2250,38 @@ function decrementCategory(category, values) {
 }
 
 function ensureAppraiserReset(state) {
-  const currentPeriod = getCurrentPeriod();
+  const previousPeriod = state.appraiserStats.period;
+  const nextState = syncAppraiserStats(state);
+  return { state: nextState, changed: previousPeriod !== nextState.appraiserStats.period };
+}
 
-  if (state.appraiserStats.period === currentPeriod) {
-    return { state, changed: false };
-  }
+function syncAppraiserStats(state) {
+  const period = getCurrentPeriod();
+  const counts = APPRAISERS.reduce((all, name) => {
+    all[name] = 0;
+    return all;
+  }, {});
+
+  state.loans.forEach((loan) => {
+    if ((loan.date || "").startsWith(period) && counts[loan.appraiser] !== undefined) {
+      counts[loan.appraiser] += 1;
+    }
+  });
+
+  state.manualEntries.forEach((entry) => {
+    if ((entry.date || "").startsWith(period)) {
+      APPRAISERS.forEach((appraiser) => {
+        counts[appraiser] += Number(entry.incomingAppraiserCounts?.[appraiser] ?? 0);
+      });
+    }
+  });
 
   state.appraiserStats = {
-    period: currentPeriod,
-    counts: APPRAISERS.reduce((counts, name) => {
-      counts[name] = 0;
-      return counts;
-    }, {}),
+    period,
+    counts,
   };
 
-  return { state, changed: true };
+  return state;
 }
 
 function getCurrentPeriod() {
@@ -2064,18 +2418,19 @@ function createDefaultState() {
 
 async function loadState() {
   const payload = await requestJson(STATE_API_URL);
-  return hydrateState(payload);
+  return syncAppraiserStats(hydrateState(payload));
 }
 
 async function saveState(state) {
+  const syncedState = syncAppraiserStats(state);
   await requestJson(STATE_API_URL, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(state),
+    body: JSON.stringify(syncedState),
   });
-  return state;
+  return syncedState;
 }
 
 function hydrateState(rawState) {
